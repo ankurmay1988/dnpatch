@@ -196,6 +196,67 @@ namespace dnpatch
             return null;
         }
 
+        public IEnumerable<Target> FindMethodsByArgumentSignature(Target target, string[] parameters, string returnType = null)
+        {
+            TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
+            return FindMethodsByArgumentTypes(type, parameters, returnType).Select(x => (Target)x);
+        }
+        public IEnumerable<Target> FindMethodsByArgumentSignatureExact(Target target, string[] parameters, string returnType = null)
+        {
+            TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
+            return FindMethodsByArgumentTypesExact(type, parameters, returnType).Select(x => (Target)x);
+        }
+
+        public IEnumerable<MethodDef> FindMethodsByArgumentTypes(TypeDef type, string[] parameters, string returnType = null)
+        {
+            bool checkParams = parameters != null;
+
+            foreach (var m in type.Methods)
+            {
+                bool isMethod = true;
+                if (!string.IsNullOrEmpty(returnType) && returnType != m.ReturnType.FullName) continue;
+                if (checkParams)
+                {
+                    var methodParams = m.Parameters.Where(x => !x.IsHiddenThisParameter && !x.IsReturnTypeParameter).ToArray();
+                    if (methodParams.Length < parameters.Length) continue;
+                    for (int i = 0; i < Math.Min(parameters.Length, methodParams.Length); i++)
+                    {
+                        if (methodParams[i].Type.FullName != parameters[i])
+                        {
+                            isMethod = false;
+                            break;
+                        }
+                    }
+                }
+                if (isMethod) yield return m;
+            }
+        }
+
+        public IEnumerable<MethodDef> FindMethodsByArgumentTypesExact(TypeDef type, string[] parameters, string returnType = null)
+        {
+            bool checkParams = parameters != null;
+
+            foreach (var m in type.Methods)
+            {
+                bool isMethod = true;
+                if (!string.IsNullOrEmpty(returnType) && returnType != m.ReturnType.FullName) continue;
+                if (checkParams)
+                {
+                    var methodParams = m.Parameters.Where(x => !x.IsHiddenThisParameter && !x.IsReturnTypeParameter).ToArray();
+                    if (methodParams.Length != parameters.Length) continue;
+                    for (int i = 0; i < methodParams.Length; i++)
+                    {
+                        if (methodParams[i].Type.FullName != parameters[i])
+                        {
+                            isMethod = false;
+                            break;
+                        }
+                    }
+                }
+                if (isMethod) yield return m;
+            }
+        }
+
         public  Target FixTarget(Target target)
         {
             target.Indices = new int[] { };
@@ -209,7 +270,7 @@ namespace dnpatch
             if (_keepOldMaxStack)
                 Module.Write(name, new ModuleWriterOptions(Module)
                 {
-                    MetaDataOptions = {Flags = MetaDataFlags.KeepOldMaxStack}
+                    MetadataOptions = {Flags = MetadataFlags.KeepOldMaxStack}
                 });
             else
                 Module.Write(name);
@@ -224,7 +285,7 @@ namespace dnpatch
             if (_keepOldMaxStack)
                 Module.Write(_file + ".tmp", new ModuleWriterOptions(Module)
                 {
-                    MetaDataOptions = { Flags = MetaDataFlags.KeepOldMaxStack }
+                    MetadataOptions = { Flags = MetadataFlags.KeepOldMaxStack }
                 });
             else
                 Module.Write(_file + ".tmp");

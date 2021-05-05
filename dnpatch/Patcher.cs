@@ -171,6 +171,15 @@ namespace dnpatch
             return _patcher.FindMethodsByOpCodeSignature(signature);
         }
 
+        public Target[] FindMethodsByArgumentSignature(Target target, string returnType, params string[] signature)
+        {
+            return _patcher.FindMethodsByArgumentSignature(target, signature, returnType).ToArray();
+        }
+        public Target[] FindMethodsByArgumentSignatureExact(Target target, string returnType, params string[] signature)
+        {
+            return _patcher.FindMethodsByArgumentSignatureExact(target, signature, returnType).ToArray();
+        }
+
         public void WriteEmptyBody(Target target)
         {
             target = _patcher.FixTarget(target);
