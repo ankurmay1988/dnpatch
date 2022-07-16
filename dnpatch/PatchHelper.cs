@@ -49,7 +49,7 @@ namespace dnpatch
             _keepOldMaxStack = keepOldMaxStack;
         }
 
-        public  void PatchAndClear(Target target)
+        public void PatchAndClear(Target target)
         {
             string[] nestedClasses = { };
             if (target.NestedClasses != null)
@@ -75,9 +75,16 @@ namespace dnpatch
             {
                 instructions.Insert(0, target.Instruction);
             }
+            if (target.Locals != null)
+            {
+                foreach (var local in target.Locals)
+                {
+                    method.Body.Variables.Add(local);
+                }
+            }
         }
 
-        public  void PatchOffsets(Target target)
+        public void PatchOffsets(Target target)
         {
             string[] nestedClasses = { };
             if (target.NestedClasses != null)
@@ -120,7 +127,7 @@ namespace dnpatch
             }
         }
 
-        public  TypeDef FindType(string classPath, string[] nestedClasses)
+        public TypeDef FindType(string classPath, string[] nestedClasses)
         {
             if (classPath.First() == '.')
                 classPath = classPath.Remove(0, 1);
@@ -175,7 +182,7 @@ namespace dnpatch
             return type.Properties.FirstOrDefault(prop => prop.Name == property);
         }
 
-        public  MethodDef FindMethod(TypeDef type, string methodName, string[] parameters, string returnType)
+        public MethodDef FindMethod(TypeDef type, string methodName, string[] parameters, string returnType)
         {
             bool checkParams = parameters != null;
             foreach (var m in type.Methods)
@@ -191,7 +198,7 @@ namespace dnpatch
                         isMethod = false;
                     }
                 }
-                if(isMethod) return m;
+                if (isMethod) return m;
             }
             return null;
         }
@@ -257,7 +264,7 @@ namespace dnpatch
             }
         }
 
-        public  Target FixTarget(Target target)
+        public Target FixTarget(Target target)
         {
             target.Indices = new int[] { };
             target.Index = -1;
@@ -265,18 +272,18 @@ namespace dnpatch
             return target;
         }
 
-        public  void Save(string name)
+        public void Save(string name)
         {
             if (_keepOldMaxStack)
                 Module.Write(name, new ModuleWriterOptions(Module)
                 {
-                    MetadataOptions = {Flags = MetadataFlags.KeepOldMaxStack}
+                    MetadataOptions = { Flags = MetadataFlags.KeepOldMaxStack }
                 });
             else
                 Module.Write(name);
         }
 
-        public  void Save(bool backup)
+        public void Save(bool backup)
         {
             if (string.IsNullOrEmpty(_file))
             {
@@ -348,7 +355,7 @@ namespace dnpatch
                 else
                 {
                     var nestedTypes = type.NestedTypes;
-                    NestedWorker:
+                NestedWorker:
                     foreach (var nestedType in nestedTypes)
                     {
                         foreach (var method in type.Methods)
@@ -415,7 +422,7 @@ namespace dnpatch
             return targets.ToArray();
         }
 
-        public  Target[] FindInstructionsByOperand(int[] operand)
+        public Target[] FindInstructionsByOperand(int[] operand)
         {
             List<ObfuscatedTarget> obfuscatedTargets = new List<ObfuscatedTarget>();
             List<int> operands = operand.ToList();
@@ -458,7 +465,7 @@ namespace dnpatch
                 else
                 {
                     var nestedTypes = type.NestedTypes;
-                    NestedWorker:
+                NestedWorker:
                     foreach (var nestedType in nestedTypes)
                     {
                         foreach (var method in type.Methods)
@@ -525,7 +532,7 @@ namespace dnpatch
             return targets.ToArray();
         }
 
-        public  Target[] FindInstructionsByOpcode(OpCode[] opcode)
+        public Target[] FindInstructionsByOpcode(OpCode[] opcode)
         {
             List<ObfuscatedTarget> obfuscatedTargets = new List<ObfuscatedTarget>();
             List<string> operands = opcode.Select(o => o.Name).ToList();
@@ -565,7 +572,7 @@ namespace dnpatch
                 else
                 {
                     var nestedTypes = type.NestedTypes;
-                    NestedWorker:
+                NestedWorker:
                     foreach (var nestedType in nestedTypes)
                     {
                         foreach (var method in type.Methods)
@@ -629,7 +636,7 @@ namespace dnpatch
             return targets.ToArray();
         }
 
-        public  Target[] FindInstructionsByOperand(Target target, int[] operand, bool removeIfFound = false)
+        public Target[] FindInstructionsByOperand(Target target, int[] operand, bool removeIfFound = false)
         {
             List<ObfuscatedTarget> obfuscatedTargets = new List<ObfuscatedTarget>();
             List<int> operands = operand.ToList();
@@ -756,7 +763,7 @@ namespace dnpatch
             return (from method in found select (Target)method).ToArray();
         }
 
-        public  Target[] FindInstructionsByOpcode(Target target, OpCode[] opcode, bool removeIfFound = false)
+        public Target[] FindInstructionsByOpcode(Target target, OpCode[] opcode, bool removeIfFound = false)
         {
             List<ObfuscatedTarget> obfuscatedTargets = new List<ObfuscatedTarget>();
             List<string> operands = opcode.Select(o => o.Name).ToList();
@@ -849,16 +856,16 @@ namespace dnpatch
         public Target[] FindInstructionsByRegex(Target target, string pattern, bool ignoreOperand)
         {
             var targets = new List<Target>();
-            if(target.Namespace != null)
+            if (target.Namespace != null)
             {
                 var type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
-                if(target.Method != null) 
+                if (target.Method != null)
                 {
                     string body = "";
                     var method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
-                    foreach(var instruction in method.Body.Instructions) 
+                    foreach (var instruction in method.Body.Instructions)
                     {
-                        if(!ignoreOperand) 
+                        if (!ignoreOperand)
                         {
                             body += instruction.OpCode + " " + instruction.Operand + "\n";
                         }
@@ -867,11 +874,11 @@ namespace dnpatch
                             body += instruction.OpCode + "\n";
                         }
                     }
-                    foreach(Match match in Regex.Matches(body, pattern))
+                    foreach (Match match in Regex.Matches(body, pattern))
                     {
-                        int startIndex = body.Split(new string[] {match.Value}, StringSplitOptions.None)[0].Split('\n').Length-1;
-                        int[] indices = {};
-                        for(int i = 0; i < match.Value.Split('\n').Length; i++)
+                        int startIndex = body.Split(new string[] { match.Value }, StringSplitOptions.None)[0].Split('\n').Length - 1;
+                        int[] indices = { };
+                        for (int i = 0; i < match.Value.Split('\n').Length; i++)
                         {
                             indices[i] = startIndex + i;
                         }
@@ -903,12 +910,12 @@ namespace dnpatch
             {
                 if (m.Name == method && m.ReturnType == returnType)
                 {
-                    if (m.GetParameters().Length == 0  && parameters == null)
+                    if (m.GetParameters().Length == 0 && parameters == null)
                     {
                         IMethod meth = importer.Import(m);
                         return meth;
                     }
-                    if ( m.GetParameters().Length == parameters.Length && CheckParametersByType(m.GetParameters(), parameters))
+                    if (m.GetParameters().Length == parameters.Length && CheckParametersByType(m.GetParameters(), parameters))
                     {
                         IMethod meth = importer.Import(m);
                         return meth;
@@ -918,7 +925,7 @@ namespace dnpatch
             return null;
         }
 
-        public  void ReplaceInstruction(Target target)
+        public void ReplaceInstruction(Target target)
         {
             string[] nestedClasses = { };
             if (target.NestedClasses != null)
@@ -938,7 +945,8 @@ namespace dnpatch
             }
             else if (target.Indices != null && target.Instructions != null)
             {
-                for(int i = 0;i<target.Indices.Length;i++) {
+                for (int i = 0; i < target.Indices.Length; i++)
+                {
                     var index = target.Indices[i];
                     instructions[index] = target.Instructions[i];
                 }
@@ -949,7 +957,7 @@ namespace dnpatch
             }
         }
 
-        public  void RemoveInstruction(Target target)
+        public void RemoveInstruction(Target target)
         {
             string[] nestedClasses = { };
             if (target.NestedClasses != null)
@@ -980,14 +988,14 @@ namespace dnpatch
             }
         }
 
-        public  Instruction[] GetInstructions(Target target)
+        public Instruction[] GetInstructions(Target target)
         {
             var type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             MethodDef method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
             return method.Body.Instructions.ToArray();
         }
 
-        public  void PatchOperand(Target target, string operand)
+        public void PatchOperand(Target target, string operand)
         {
             TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             MethodDef method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
@@ -1009,7 +1017,7 @@ namespace dnpatch
             }
         }
 
-        public  void PatchOperand(Target target, int operand)
+        public void PatchOperand(Target target, int operand)
         {
             TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             MethodDef method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
@@ -1049,7 +1057,7 @@ namespace dnpatch
             }
         }
 
-        public  void PatchOperand(Target target, int[] operand)
+        public void PatchOperand(Target target, int[] operand)
         {
             TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             MethodDef method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
@@ -1067,7 +1075,7 @@ namespace dnpatch
             }
         }
 
-        public  string GetOperand(Target target)
+        public string GetOperand(Target target)
         {
             TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             MethodDef method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
@@ -1081,7 +1089,7 @@ namespace dnpatch
             return method.Body.Instructions[target.Index].GetLdcI4Value();
         }
 
-        public  int FindInstruction(Target target, Instruction instruction, int occurence)
+        public int FindInstruction(Target target, Instruction instruction, int occurence)
         {
             occurence--; // Fix the occurence, e.g. second occurence must be 1 but hoomans like to write like they speak so why don't assist them?
             var type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
