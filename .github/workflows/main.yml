@@ -17,6 +17,12 @@ jobs:
       with:
         dotnet-version: 6.0.x
         
+    - name: Add github source to nuget
+      shell: pwsh
+      run: |
+        dotnet nuget remove source github --configfile nuget.config
+        dotnet nuget add source "https://nuget.pkg.github.com/ankurmay1988/index.json" --username ankurmay1988 --password ${{ secrets.NUGETPACKAGEPAT }} --store-password-in-clear-text --name github  --configfile nuget.config
+    
     - name: Build
       run: dotnet build -c Release
     
