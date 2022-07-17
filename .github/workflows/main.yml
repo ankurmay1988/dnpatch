@@ -40,7 +40,4 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       shell: pwsh
       run: |
-        Get-ChildItem bin\\Release\\dnlib.*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --api-key ${{secrets.NUGETPACKAGEPAT}}  --source "github" }
-
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+        Get-ChildItem dnlib.*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --api-key ${{secrets.NUGETPACKAGEPAT}}  --source "github" }
