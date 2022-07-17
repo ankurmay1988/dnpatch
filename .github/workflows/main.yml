@@ -22,12 +22,11 @@ jobs:
       shell: pwsh
       run: |
         dotnet nuget add source "https://nuget.pkg.github.com/ankurmay1988/index.json" --username ankurmay1988 --password ${{ secrets.NUGETPACKAGEPAT }} --store-password-in-clear-text --name github
-
-    - name: Build
-      run: dotnet build -c Release
     
-    - name: Nuget Package
-      run: dotnet pack
+    - name: Build & Create Nuget Package
+      shell: pwsh
+      run: |
+        dotnet pack
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
