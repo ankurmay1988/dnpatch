@@ -22,7 +22,7 @@ jobs:
       run: dotnet build -c Release
       
     - name: Nuget Package
-      run: dotnet pack .\dnpatch\dnpatch.csproj
+      run: dotnet pack .\\dnpatch\\dnpatch.csproj
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
