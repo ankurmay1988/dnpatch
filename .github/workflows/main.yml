@@ -30,7 +30,7 @@ jobs:
         # Artifact name
         name: dnpatch
         # A file, directory or wildcard pattern that describes what to upload
-        path: "bin\\Release\\*.dll"
+        path: ".\\dnpatch\\bin\\Release\\netstandard2.0\\*.dll"
         
     - name: Publish NuGet (Private Nuget.Server)
       # You may pin to the exact commit or the version.
@@ -38,7 +38,7 @@ jobs:
       uses: rollycodes/publish-nuget-private@v3.0.1
       with:
         # Filepath of the project to be packaged, relative to root of repository
-        PROJECT_FILE_PATH: .\dnpatch\dnpatch.csproj
+        PROJECT_FILE_PATH: .\\dnpatch\\dnpatch.csproj
         # API key to authenticate with NuGet server
         NUGET_KEY: ${{secrets.NUGETPACKAGEPAT}}
         # NuGet server uri hosting the packages, defaults to https://api.nuget.org
