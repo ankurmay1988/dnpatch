@@ -5,6 +5,7 @@
 	  <IsPackable>true</IsPackable>
 	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	  <PackageOutputPath>$(SolutionDir)</PackageOutputPath>
+	  <RepositoryUrl>https://github.com/ankurmay1988/dnpatch</RepositoryUrl>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>false</Optimize>
