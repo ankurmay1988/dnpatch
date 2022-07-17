@@ -246,3 +246,5 @@ ModelManifest.xml
 /.idea/.idea.dnpatch/.idea/contentModel.xml
 
 \.DS_Store
+# because of github stupidity
+nuget.config
