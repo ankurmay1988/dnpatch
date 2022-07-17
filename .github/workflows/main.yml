@@ -11,9 +11,6 @@ jobs:
     runs-on: windows-latest
     
     steps:    
-    - uses: actions/labeler@v4
-      with:
-        repo-token: ${{ secrets.NUGETPACKAGEPAT }}
 
     - uses: actions/checkout@v3
     - name: Setup .NET
@@ -25,12 +22,11 @@ jobs:
       shell: pwsh
       run: |
         dotnet nuget add source "https://nuget.pkg.github.com/ankurmay1988/index.json" --username ankurmay1988 --password ${{ secrets.NUGETPACKAGEPAT }} --store-password-in-clear-text --name github
-
-    - name: Build
-      run: dotnet build -c Release
     
-    - name: Nuget Package
-      run: dotnet pack .\\dnpatch\\dnpatch.csproj
+    - name: Build & Create Nuget Package
+      shell: pwsh
+      run: |
+        dotnet pack -c Release
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
@@ -38,13 +34,13 @@ jobs:
         # Artifact name
         name: dnpatch
         # A file, directory or wildcard pattern that describes what to upload
-        path: ".\\dnpatch\\bin\\Release\\netstandard2.0\\*.dll"
+        path: "bin\\Release\\netstandard2.0\\*.dll"
         
     - name: Upload to nuget.org if it's a new release
       if: startsWith(github.ref, 'refs/tags/')
       shell: pwsh
       run: |
-        Get-ChildItem dnpatch\\bin\\Release\\dnlib.*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --api-key ${{secrets.NUGETPACKAGEPAT}}  --source "github" }
+        Get-ChildItem bin\\Release\\dnlib.*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --api-key ${{secrets.NUGETPACKAGEPAT}}  --source "github" }
 
     - name: Test
       run: dotnet test --no-build --verbosity normal
