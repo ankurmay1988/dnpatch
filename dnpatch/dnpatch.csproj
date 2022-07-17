@@ -4,6 +4,7 @@
     <OutputType>Library</OutputType>
 	  <IsPackable>true</IsPackable>
 	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	  <PackageOutputPath>$(SolutionDir)</PackageOutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>false</Optimize>
