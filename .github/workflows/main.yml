@@ -16,7 +16,9 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: 6.0.x
-        
+    - name: Update nuget.config with password everytime
+      run: dotnet nuget update source github --configfile nuget.config --password ${{ secrets.NUGETPACKAGEPAT }}
+    
     - name: Build
       run: dotnet build -c Release
     
