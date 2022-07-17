@@ -12,8 +12,11 @@ jobs:
     runs-on: windows-latest
     
     steps:    
-
+    # for GitVersion to work we need to unshallow checkouts
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
