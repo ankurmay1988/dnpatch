@@ -10,7 +10,11 @@ jobs:
   build:
     runs-on: windows-latest
     
-    steps:
+    steps:    
+    - uses: actions/labeler@v4
+      with:
+        repo-token: ${{ secrets.NUGETPACKAGEPAT }}
+
     - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
@@ -21,7 +25,7 @@ jobs:
       shell: pwsh
       run: |
         dotnet nuget add source "https://nuget.pkg.github.com/ankurmay1988/index.json" --username ankurmay1988 --password ${{ secrets.NUGETPACKAGEPAT }} --store-password-in-clear-text --name github
-    
+
     - name: Build
       run: dotnet build -c Release
     
