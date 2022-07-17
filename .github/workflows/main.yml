@@ -27,7 +27,7 @@ jobs:
     - name: Build & Create Nuget Package
       shell: pwsh
       run: |
-        dotnet pack -c Release
+        dotnet pack -c Release -p:Version=${{ env.LATEST_TAG }}
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
