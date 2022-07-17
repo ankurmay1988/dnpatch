@@ -26,7 +26,7 @@ jobs:
     - name: Build & Create Nuget Package
       shell: pwsh
       run: |
-        dotnet pack
+        dotnet pack -c Release
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
