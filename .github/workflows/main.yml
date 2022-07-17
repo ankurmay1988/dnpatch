@@ -21,6 +21,11 @@ jobs:
     - name: Build
       run: dotnet build -c Release
       
+    - name: Add github source to nuget
+      shell: pwsh
+      run: |
+        dotnet nuget add source --username ankurmay1988 --password ${{ secrets.NUGETPACKAGEPAT }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/OWNER/index.json"
+          
     - name: Nuget Package
       run: dotnet pack .\\dnpatch\\dnpatch.csproj
       
@@ -32,19 +37,11 @@ jobs:
         # A file, directory or wildcard pattern that describes what to upload
         path: ".\\dnpatch\\bin\\Release\\netstandard2.0\\*.dll"
         
-    - name: Publish NuGet (Private Nuget.Server)
-      # You may pin to the exact commit or the version.
-      # uses: rollycodes/publish-nuget-private@c67b9a113c5871124d37592cf95fb8e7a0cf1a37
-      uses: rollycodes/publish-nuget-private@v3.0.1
-      with:
-        # Filepath of the project to be packaged, relative to root of repository
-        PROJECT_FILE_PATH: .\\dnpatch\\dnpatch.csproj
-        # API key to authenticate with NuGet server
-        NUGET_KEY: ${{secrets.NUGETPACKAGEPAT}}
-        # NuGet server uri hosting the packages, defaults to https://api.nuget.org
-        NUGET_SOURCE: https://nuget.pkg.github.com/OWNER/index.json
-        # Flag to toggle pushing symbols along with nuget package to the server, disabled by default
-        INCLUDE_SYMBOLS: true
+    - name: Upload to nuget.org if it's a new release
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: pwsh
+      run: |
+        Get-ChildItem dnpatch\\bin\\Release\\dnlib.*.nupkg | ForEach-Object { dotnet nuget push $_.FullName --api-key ${{secrets.NUGETPACKAGEPAT}}  --source "github" }
 
     - name: Test
       run: dotnet test --no-build --verbosity normal
