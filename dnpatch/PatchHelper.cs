@@ -177,9 +177,29 @@ namespace dnpatch
             return null;
         }
 
+        public TypeDef FindType(Target target)
+        {
+            string[] nestedClasses = { };
+            if (target.NestedClasses != null)
+            {
+                nestedClasses = target.NestedClasses;
+            }
+            else if (target.NestedClass != null)
+            {
+                nestedClasses = new[] { target.NestedClass };
+            }
+            return FindType(target.Namespace + "." + target.Class, nestedClasses);
+        }
+
         public PropertyDef FindProperty(TypeDef type, string property)
         {
             return type.Properties.FirstOrDefault(prop => prop.Name == property);
+        }
+
+        public MethodDef FindMethod(Target target)
+        {
+            var type = FindType(target);
+            return FindMethod(type, target.Method, target.Parameters, target.ReturnType);
         }
 
         public MethodDef FindMethod(TypeDef type, string methodName, string[] parameters, string returnType)

@@ -90,7 +90,7 @@ namespace dnpatch
 
         public void Save(bool backup)
         {
-           _patcher.Save(backup);
+            _patcher.Save(backup);
         }
 
         public int FindInstruction(Target target, Instruction instruction)
@@ -178,6 +178,16 @@ namespace dnpatch
         public Target[] FindMethodsByArgumentSignatureExact(Target target, string returnType, params string[] signature)
         {
             return _patcher.FindMethodsByArgumentSignatureExact(target, signature, returnType).ToArray();
+        }
+
+        public MethodDef FindMethod(Target target)
+        {
+            return _patcher.FindMethod(target);
+        }
+
+        public TypeDef FindType(Target target)
+        {
+            return _patcher.FindType(target);
         }
 
         public void WriteEmptyBody(Target target)
