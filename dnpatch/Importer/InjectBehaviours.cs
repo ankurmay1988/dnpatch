@@ -130,11 +130,11 @@ namespace dnpatch
 
             private string GetName(string originalName)
             {
-                var m = Regex.Match(originalName, @".*_(\d+)");
+                var nameMatch = Regex.Match(originalName, @".*_(\d+)");
                 int num = 0;
-                if (m.Success)
+                if (nameMatch.Success)
                 {
-                    num = Int32.Parse(m.Groups[1].ToString()) + 1;
+                    num = Int32.Parse(nameMatch.Groups[1].ToString()) + 1;
                 }
 
                 return $"{originalName}_{num}";
