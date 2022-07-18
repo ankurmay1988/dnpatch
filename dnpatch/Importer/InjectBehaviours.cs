@@ -130,7 +130,7 @@ namespace dnpatch
 
             private string GetName(string originalName)
             {
-                var m = Regex.Match(originalName, @".*\_(\d+)");
+                var m = Regex.Match(originalName, @".*_(\d+)");
                 int num = 0;
                 if (m.Success)
                 {
