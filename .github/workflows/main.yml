@@ -12,8 +12,11 @@ jobs:
     runs-on: windows-latest
     
     steps:    
-
+    # for GitVersion to work we need to unshallow checkouts
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
@@ -27,7 +30,7 @@ jobs:
     - name: Build & Create Nuget Package
       shell: pwsh
       run: |
-        dotnet pack -c Release -p:Version=${{ env.LATEST_TAG }}
+        dotnet pack -c Release
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.0
