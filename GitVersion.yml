@@ -5,7 +5,7 @@ branches:
   main:
     regex: ^master$|^main$
     mode: ContinuousDeployment
-    increment: Inherit
+    increment: Minor
   develop:
     regex: ^dev(elop)?(ment)?$
     mode: ContinuousDeployment
