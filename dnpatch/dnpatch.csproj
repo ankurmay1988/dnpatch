@@ -6,6 +6,7 @@
 	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	  <PackageOutputPath>$(SolutionDir)</PackageOutputPath>
 	  <RepositoryUrl>https://github.com/ankurmay1988/dnpatch</RepositoryUrl>
+    <LangVersion>10</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>false</Optimize>
@@ -20,5 +21,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />
   </ItemGroup>
 </Project>
