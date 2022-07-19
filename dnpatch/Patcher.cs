@@ -259,6 +259,33 @@ namespace dnpatch
             _patcher.InjectMethod(target);
         }
 
+        public void ReplaceMethod(Target target, MethodDef codeMethod)
+        {
+            _patcher.ReplaceMethod(target, codeMethod);
+        }
+
+        /// <summary>
+        /// Compiles C# source code with the Target Framework and All the References of the patcher assembly. 
+        /// Additional Assembly DLLs and GAC Assemblies can be supplied.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// ModuleDefMD codeModule = patcher.CompileSourceCodeForAssembly(@"
+        /// using System;
+        /// using System.IO;
+        /// public class Sample {
+        ///     public string FunctionA()
+        /// 	{
+        /// 		return string.Empty;
+        /// 	}
+        /// }", additionalGACAssemblies: new[] { "System.IO" });
+        /// </code>
+        /// </example>
+        public ModuleDefMD CompileSourceCodeForAssembly(string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
+        {
+            return _patcher.CompileSourceCodeForAssembly(sourceCode, additionalDllReferences, additionalGACAssemblies);
+        }
+
         public void AddCustomAttribute(Target target, CustomAttribute attribute)
         {
             _patcher.AddCustomAttribute(target, attribute);

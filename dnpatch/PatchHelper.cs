@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using dnlib.DotNet.Writer;
+using ICSharpCode.Decompiler.Metadata;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace dnpatch
 {
@@ -1193,6 +1196,43 @@ namespace dnpatch
             }
         }
 
+        public void ReplaceMethod(Target target, MethodDef codeMethod)
+        {
+            var type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
+            var method = FindMethod(target);
+            method.Body.Variables.Clear();
+            method.Body.Instructions.Clear();
+            method.Body.ExceptionHandlers.Clear();
+
+            if (codeMethod.Body.HasVariables)
+            {
+                foreach (var local in codeMethod.Body.Variables)
+                {
+                    method.Body.Variables.Add(local);
+                }
+            }
+
+            if (codeMethod.Body.HasInstructions)
+            {
+                for (int i = 0; i < codeMethod.Body.Instructions.Count; i++)
+                {
+                    method.Body.Instructions.Insert(i, codeMethod.Body.Instructions[i]);
+                }
+            }
+            else
+            {
+                method.Body.Instructions.Insert(0, target.Instruction);
+            }
+
+            if (codeMethod.Body.HasExceptionHandlers)
+            {
+                for (int i = 0; i < codeMethod.Body.ExceptionHandlers.Count; i++)
+                {
+                    method.Body.ExceptionHandlers.Insert(i, codeMethod.Body.ExceptionHandlers[i]);
+                }
+            }
+        }
+
         public void AddCustomAttribute(Target target, CustomAttribute attribute)
         {
             TypeDef type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
@@ -1256,6 +1296,97 @@ namespace dnpatch
                 Class = Module.EntryPoint.DeclaringType.Name,
                 Method = Module.EntryPoint.Name
             };
+        }
+
+        public ModuleDefMD CompileSourceCodeForAssembly(string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
+        {
+            var resolver = GetAssemblyResolver(_file);
+            var source = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(sourceCode);
+
+            var references = new List<string>();
+            references.AddRange(GetReferences(_file));
+
+            if (additionalDllReferences != null)
+            {
+                references.AddRange(additionalDllReferences);
+            }
+
+            if (additionalGACAssemblies != null)
+            {
+                var gacAssemblies = UniversalAssemblyResolver.EnumerateGac();
+                var gacRefs = additionalGACAssemblies.Select(x =>
+                {
+                    var assName = gacAssemblies.Single(a => a.Name == x || a.FullName == x);
+                    return UniversalAssemblyResolver.GetAssemblyInGac(assName);
+                });
+                references.AddRange(gacRefs);
+            }
+
+            references.Add(_file);
+            references = references.Distinct().ToList();
+            var refs = references.Select(x => MetadataReference.CreateFromFile(x));
+
+            var compileOpts = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                                .WithPlatform(Platform.AnyCpu);
+            var compilation = CSharpCompilation.Create("sample", options: compileOpts)
+                    .AddReferences(refs)
+                    .AddSyntaxTrees(source);
+
+            using var dll = new MemoryStream();
+            using var pdb = new MemoryStream();
+            var result = compilation.Emit(dll, pdb);
+
+            if (!result.Success)
+            {
+                throw new InvalidMethodException("Unable to compile. Errors: " + String.Join("\n", result.Diagnostics.Select(x => x.GetMessage())));
+            }
+            var codeModule = ModuleDefMD.Load(dll);
+            codeModule.LoadPdb(pdb.ToArray());
+
+            return codeModule;
+        }
+
+        private IEnumerable<string> GetReferences(string fileName)
+        {
+            using var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            using ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
+                    fileName,
+                    fileStream,
+                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchEntireImage,
+                    System.Reflection.Metadata.MetadataReaderOptions.Default);
+            var targetFramework = peFile.DetectTargetFrameworkId();
+            var runtime = peFile.DetectRuntimePack();
+            UniversalAssemblyResolver resolver = new(
+                    fileName,
+                    false,
+                    targetFramework,
+                    runtime,
+                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchMetadata,
+                    System.Reflection.Metadata.MetadataReaderOptions.Default);
+            // using DecompilerTypeSystem decompilerTypeSystem = new(peFile, resolver);
+            return peFile.AssemblyReferences.Select(r => resolver.FindAssemblyFile(r)).Where(x => x != null);
+        }
+
+        private UniversalAssemblyResolver GetAssemblyResolver(string fileName)
+        {
+            using var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            using ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
+                    fileName,
+                    fileStream,
+                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchEntireImage,
+                    System.Reflection.Metadata.MetadataReaderOptions.Default);
+            var targetFramework = peFile.DetectTargetFrameworkId();
+            var runtime = peFile.DetectRuntimePack();
+            UniversalAssemblyResolver resolver = new(
+                    fileName,
+                    false,
+                    targetFramework,
+                    runtime,
+                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchMetadata,
+                    System.Reflection.Metadata.MetadataReaderOptions.Default);
+
+            // using DecompilerTypeSystem decompilerTypeSystem = new(peFile, resolver);
+            return resolver;
         }
     }
 }
