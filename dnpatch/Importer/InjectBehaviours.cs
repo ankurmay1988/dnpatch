@@ -47,8 +47,8 @@ namespace dnpatch
                 if (injected == null) throw new ArgumentNullException(nameof(injected));
 
                 // _nameService.StoreNames(_context, injected);
-
-                injected.Name = GetName(injected);
+                if (source.FullName == injected.FullName)
+                    injected.Name = GetName(injected);
                 injected.Namespace = null;
 
                 // There is no need for this to be renamed again.
@@ -63,7 +63,8 @@ namespace dnpatch
                 // _nameService.StoreNames(_context, injected);
 
                 if (!injected.IsSpecialName && !injected.DeclaringType.IsDelegate && !injected.IsOverride())
-                    injected.Name = GetName(injected.Name);
+                    if (source.FullName == injected.FullName)
+                        injected.Name = GetName(injected.Name);
 
                 // There is no need for this to be renamed again.
                 // _nameService.SetCanRename(_context, injected, false);
@@ -77,7 +78,8 @@ namespace dnpatch
                 // _nameService.StoreNames(_context, injected);
 
                 if (!injected.IsSpecialName)
-                    injected.Name = GetName(injected.Name);
+                    if (source.FullName == injected.FullName)
+                        injected.Name = GetName(injected.Name);
 
                 // There is no need for this to be renamed again.
                 // _nameService.SetCanRename(_context, injected, false);
@@ -91,7 +93,8 @@ namespace dnpatch
                 // _nameService.StoreNames(_context, injected);
 
                 if (!injected.IsSpecialName)
-                    injected.Name = GetName(injected.Name);
+                    if (source.FullName == injected.FullName)
+                        injected.Name = GetName(injected.Name);
 
                 // There is no need for this to be renamed again.
                 // _nameService.SetCanRename(_context, injected, false);
@@ -105,7 +108,8 @@ namespace dnpatch
                 // _nameService.StoreNames(_context, injected);
 
                 if (!injected.IsSpecialName)
-                    injected.Name = GetName(injected.Name);
+                    if (source.FullName == injected.FullName)
+                        injected.Name = GetName(injected.Name);
 
                 // There is no need for this to be renamed again.
                 // _nameService.SetCanRename(_context, injected, false);
@@ -124,7 +128,7 @@ namespace dnpatch
                     nameBuilder.Insert(0, declaringType.Name);
                 }
 
-                nameBuilder.Replace('.', '_').Replace('/', '_');
+                //nameBuilder.Replace('.', '_').Replace('/', '_');
                 return GetName(nameBuilder.ToString());
             }
 
