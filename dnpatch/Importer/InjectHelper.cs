@@ -156,6 +156,8 @@ namespace dnpatch
             if (methodDef.IsStatic)
                 ctx.ApplyMapping(methodDef.DeclaringType, target.GlobalType);
             var injector = new Injector(ctx, behavior);
+            behavior.OriginModule = ctx.OriginModule;
+            behavior.TargetModule = ctx.TargetModule;
 
             var mappedMethod = injector.Inject(methodDef);
             return InjectResult.Create(methodDef, mappedMethod,
@@ -184,6 +186,8 @@ namespace dnpatch
 
             var ctx = GetOrCreateContext(typeDef.Module, target);
             var injector = new Injector(ctx, behavior);
+            behavior.OriginModule = ctx.OriginModule;
+            behavior.TargetModule = ctx.TargetModule;
 
             var mappedType = injector.Inject(typeDef);
             return InjectResult.Create(typeDef, mappedType, injector.InjectedMembers.Where(m => m.Value != mappedType));
