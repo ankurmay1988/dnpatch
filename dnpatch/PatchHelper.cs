@@ -64,6 +64,7 @@ namespace dnpatch
             var method = FindMethod(type, target.Method, target.Parameters, target.ReturnType);
             var instructions = method.Body.Instructions;
             instructions.Clear();
+            method.Body.ExceptionHandlers.Clear();
             if (target.Instructions != null)
             {
                 for (int i = 0; i < target.Instructions.Length; i++)
