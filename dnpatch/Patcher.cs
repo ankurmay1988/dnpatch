@@ -281,9 +281,19 @@ namespace dnpatch
         /// }", additionalGACAssemblies: new[] { "System.IO" });
         /// </code>
         /// </example>
-        public ModuleDefMD CompileSourceCodeForAssembly(string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
+        public ModuleDefMD CompileSourceCodeForAssembly(string moduleName, string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
         {
-            return _patcher.CompileSourceCodeForAssembly(sourceCode, additionalDllReferences, additionalGACAssemblies);
+            return _patcher.CompileSourceCodeForAssembly(moduleName, sourceCode, additionalDllReferences, additionalGACAssemblies);
+        }
+
+        public void HookMethod(MethodDef method, MethodDef methodToCall)
+        {
+            _patcher.HookMethod(method, methodToCall);
+        }
+
+        public void HookMethod(MethodDef method, Target methodToCall)
+        {
+            _patcher.HookMethod(method, methodToCall);
         }
 
         public void AddCustomAttribute(Target target, CustomAttribute attribute)

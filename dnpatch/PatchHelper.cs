@@ -12,6 +12,7 @@ using dnlib.DotNet.Writer;
 using ICSharpCode.Decompiler.Metadata;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace dnpatch
 {
@@ -1298,13 +1299,13 @@ namespace dnpatch
             };
         }
 
-        public ModuleDefMD CompileSourceCodeForAssembly(string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
+        public ModuleDefMD CompileSourceCodeForAssembly(string moduleName, string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
         {
-            var resolver = GetAssemblyResolver(_file);
             var source = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(sourceCode);
 
             var references = new List<string>();
-            references.AddRange(GetReferences(_file));
+            references.AddRange(Extensions.GetReferences(_file, out var targetFramework, out var runtime, out var resolver));
+            var emitOptions = new EmitOptions(runtimeMetadataVersion: targetFramework);
 
             if (additionalDllReferences != null)
             {
@@ -1326,15 +1327,15 @@ namespace dnpatch
             references = references.Distinct().ToList();
             var refs = references.Select(x => MetadataReference.CreateFromFile(x));
 
-            var compileOpts = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            var compileOpts = new CSharpCompilationOptions(OutputKind.NetModule)
                                 .WithPlatform(Platform.AnyCpu);
-            var compilation = CSharpCompilation.Create("sample", options: compileOpts)
+            var compilation = CSharpCompilation.Create(moduleName, options: compileOpts)
                     .AddReferences(refs)
                     .AddSyntaxTrees(source);
 
             using var dll = new MemoryStream();
             using var pdb = new MemoryStream();
-            var result = compilation.Emit(dll, pdb);
+            var result = compilation.Emit(dll, pdb, options: emitOptions);
 
             if (!result.Success)
             {
@@ -1346,47 +1347,44 @@ namespace dnpatch
             return codeModule;
         }
 
-        private IEnumerable<string> GetReferences(string fileName)
+        public IList<Instruction> GetCallInstructions(MethodDef method)
         {
-            using var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            using ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
-                    fileName,
-                    fileStream,
-                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchEntireImage,
-                    System.Reflection.Metadata.MetadataReaderOptions.Default);
-            var targetFramework = peFile.DetectTargetFrameworkId();
-            var runtime = peFile.DetectRuntimePack();
-            UniversalAssemblyResolver resolver = new(
-                    fileName,
-                    false,
-                    targetFramework,
-                    runtime,
-                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchMetadata,
-                    System.Reflection.Metadata.MetadataReaderOptions.Default);
-            // using DecompilerTypeSystem decompilerTypeSystem = new(peFile, resolver);
-            return peFile.AssemblyReferences.Select(r => resolver.FindAssemblyFile(r)).Where(x => x != null);
+            var declaringType = method.DeclaringType;
+            var parameters = method.Parameters;
+            var numParameters = parameters.Count;
+
+            var instructions = new List<Instruction>();
+            if (!method.IsStatic && method.IsInternalCall)
+            {
+                instructions.Add(OpCodes.Ldarg_0.ToInstruction());
+            }
+            for (byte i = 0; i < parameters.Count; i++)
+                instructions.Add(Instruction.Create(OpCodes.Ldarg, new Parameter(i + 1)));
+
+            instructions.Add(Instruction.Create(OpCodes.Call, method));
+            instructions.Add(Instruction.Create(OpCodes.Ret));
+
+            return instructions;
         }
-
-        private UniversalAssemblyResolver GetAssemblyResolver(string fileName)
+        public void HookMethod(MethodDef method, MethodDef methodToCall)
         {
-            using var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            using ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
-                    fileName,
-                    fileStream,
-                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchEntireImage,
-                    System.Reflection.Metadata.MetadataReaderOptions.Default);
-            var targetFramework = peFile.DetectTargetFrameworkId();
-            var runtime = peFile.DetectRuntimePack();
-            UniversalAssemblyResolver resolver = new(
-                    fileName,
-                    false,
-                    targetFramework,
-                    runtime,
-                    System.Reflection.PortableExecutable.PEStreamOptions.PrefetchMetadata,
-                    System.Reflection.Metadata.MetadataReaderOptions.Default);
+            if (method.Module.Assembly != methodToCall.Module.Assembly)
+            {
+                throw new ArgumentException("Methods should be of same assembly. Use InjectHelper to inject methods or whole types into target assembly.");
+            }
 
-            // using DecompilerTypeSystem decompilerTypeSystem = new(peFile, resolver);
-            return resolver;
+            var instructions = GetCallInstructions(methodToCall);
+            method.Body.Variables.Clear();
+            method.Body.Instructions.Clear();
+            method.Body.ExceptionHandlers.Clear();
+            for (int i = 0; i < instructions.Count; i++)
+            {
+                method.Body.Instructions.Insert(i, instructions[i]);
+            }
+        }
+        public void HookMethod(MethodDef method, Target methodToCall)
+        {
+            HookMethod(method, FindMethod(methodToCall));
         }
     }
 }
