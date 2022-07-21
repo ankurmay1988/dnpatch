@@ -47,7 +47,16 @@ namespace dnpatch
             DetectFramework(fileName, out targetFramework, out runtime, out var refs);
             var asmResolver = GetAssemblyResolver(fileName, targetFramework, runtime);
             resolver = asmResolver;
-            return refs.Select(r => asmResolver.FindAssemblyFile(r)).Where(x => x != null);
+            return refs.Select(r =>
+            {
+                string file = string.Empty;
+                try
+                {
+                    file = asmResolver.FindAssemblyFile(r);
+                }
+                catch { }
+                return file;
+            }).Where(x => !string.IsNullOrWhiteSpace(x));
         }
 
         public static UniversalAssemblyResolver GetAssemblyResolver(string fileName)
