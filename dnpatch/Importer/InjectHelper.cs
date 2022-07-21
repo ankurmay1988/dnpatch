@@ -391,16 +391,34 @@ namespace dnpatch
 
             internal TypeDef Inject(TypeDef typeDef)
             {
+                TypeDef result = null;
                 var existingMappedTypeDef = InjectContext.ResolveMapped(typeDef);
-                if (existingMappedTypeDef is not null) return existingMappedTypeDef;
+                if (existingMappedTypeDef is not null) result = existingMappedTypeDef;
 
                 var importer = new Importer(InjectContext.TargetModule, ImporterOptions.TryToUseDefs,
                     new GenericParamContext(), this);
-                var result = InjectTypeDef(typeDef, importer);
-                foreach (var method in typeDef.Methods) CopyDef(method);
-                foreach (var field in typeDef.Fields) CopyDef(field);
-                foreach (var @event in typeDef.Events) CopyDef(@event);
-                foreach (var prop in typeDef.Properties) CopyDef(prop);
+
+                result = result ?? InjectTypeDef(typeDef, importer);
+                foreach (var method in typeDef.Methods)
+                {
+                    if (InjectContext.ResolveMapped(method) == null)
+                        CopyDef(method);
+                }
+                foreach (var field in typeDef.Fields)
+                {
+                    if (InjectContext.ResolveMapped(field) == null)
+                        CopyDef(field);
+                }
+                foreach (var @event in typeDef.Events)
+                {
+                    if (InjectContext.ResolveMapped(@event) == null)
+                        CopyDef(@event);
+                }
+                foreach (var prop in typeDef.Properties)
+                {
+                    if (InjectContext.ResolveMapped(prop) == null)
+                        CopyDef(prop);
+                }
                 foreach (var nestedType in typeDef.NestedTypes) Inject(nestedType);
 
                 InjectRemaining(importer);
@@ -572,6 +590,28 @@ namespace dnpatch
                         else if (instr.Operand is Instruction[] instructionArrayOp)
                             instr.Operand = (instructionArrayOp).Select(target => (Instruction)bodyMap[target])
                                 .ToArray();
+                        else if (instr.Operand is IMethod inlineMethod)
+                        {
+                            var mapped = importer.Import(inlineMethod);
+                            instr.Operand = mapped;
+                        }
+                        else if (instr.Operand is IMemberDef inlineType)
+                        {
+                            if (inlineType.IsFieldDef && inlineType is FieldDef fieldDef)
+                            {
+                                var mapped = importer.Import(fieldDef);
+                                instr.Operand = mapped;
+                            }
+                            else
+                            {
+
+                            }
+                        }
+                        else if (instr.Operand is MethodSig inlineSig)
+                        {
+                            var mapped = importer.Import(inlineSig);
+                            instr.Operand = mapped;
+                        }
                     }
 
                     foreach (var eh in methodDef.Body.ExceptionHandlers)
@@ -698,6 +738,16 @@ namespace dnpatch
                 if (fieldDef.Module == InjectContext.OriginModule)
                     return CopyDef(fieldDef);
                 return base.Map(fieldDef);
+            }
+
+            public override MemberRef Map(MemberRef source)
+            {
+                return base.Map(source);
+            }
+
+            public override TypeRef Map(Type source)
+            {
+                return base.Map(source);
             }
 
             #endregion
