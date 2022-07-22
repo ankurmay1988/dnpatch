@@ -294,6 +294,11 @@ namespace dnpatch
 
                 CloneGenericParameters(source, methodDefUser);
 
+                if (source.Body.HasInstructions)
+                {
+                    CopyDef(source.Body.Instructions);
+                }
+
                 _injectedMembers.Add(source, methodDefUser);
                 PendingForInject.Enqueue(source);
 
@@ -343,6 +348,41 @@ namespace dnpatch
                 PendingForInject.Enqueue(source);
 
                 return propertyDefUser;
+            }
+
+            private void CopyDef(IEnumerable<Instruction> instructions)
+            {
+                foreach (var instr in instructions)
+                {
+                    if (instr.Operand is IMemberDef inlineType)
+                    {
+                        if (inlineType.IsTypeDef && inlineType is TypeDef def)
+                        {
+                            if (InjectContext.ResolveMapped(def) == null)
+                                CopyDef(def);
+                        }
+                        else if (inlineType.IsMethodDef && inlineType is MethodDef methodDef)
+                        {
+                            if (InjectContext.ResolveMapped(methodDef) == null)
+                                CopyDef(methodDef);
+                        }
+                        else if (inlineType.IsFieldDef && inlineType is FieldDef fieldDef)
+                        {
+                            if (InjectContext.ResolveMapped(fieldDef) == null)
+                                CopyDef(fieldDef);
+                        }
+                        else if (inlineType.IsEventDef && inlineType is EventDef eventDef)
+                        {
+                            if (InjectContext.ResolveMapped(eventDef) == null)
+                                CopyDef(eventDef);
+                        }
+                        else if (inlineType.IsPropertyDef && inlineType is PropertyDef propDef)
+                        {
+                            if (InjectContext.ResolveMapped(propDef) == null)
+                                CopyDef(propDef);
+                        }
+                    }
+                }
             }
 
             private static void CloneGenericParameters(ITypeOrMethodDef origin, ITypeOrMethodDef result)
@@ -590,27 +630,33 @@ namespace dnpatch
                         else if (instr.Operand is Instruction[] instructionArrayOp)
                             instr.Operand = (instructionArrayOp).Select(target => (Instruction)bodyMap[target])
                                 .ToArray();
-                        else if (instr.Operand is IMethod inlineMethod)
-                        {
-                            var mapped = importer.Import(inlineMethod);
-                            instr.Operand = mapped;
-                        }
                         else if (instr.Operand is IMemberDef inlineType)
                         {
-                            if (inlineType.IsFieldDef && inlineType is FieldDef fieldDef)
+                            if (inlineType.IsTypeDef && inlineType is TypeDef inlineTypeDef)
                             {
-                                var mapped = importer.Import(fieldDef);
-                                instr.Operand = mapped;
+                                var mapped = InjectContext.ResolveMapped(inlineTypeDef);
+                                instr.Operand = mapped ?? inlineTypeDef;
                             }
-                            else
+                            else if (inlineType.IsMethodDef && inlineType is MethodDef inlineMethodDef)
                             {
-
+                                var mapped = InjectContext.ResolveMapped(inlineMethodDef);
+                                instr.Operand = mapped ?? inlineMethodDef;
                             }
-                        }
-                        else if (instr.Operand is MethodSig inlineSig)
-                        {
-                            var mapped = importer.Import(inlineSig);
-                            instr.Operand = mapped;
+                            else if (inlineType.IsFieldDef && inlineType is FieldDef fieldDef)
+                            {
+                                var mapped = InjectContext.ResolveMapped(fieldDef);
+                                instr.Operand = mapped ?? fieldDef;
+                            }
+                            else if (inlineType.IsEventDef && inlineType is EventDef eventDef)
+                            {
+                                var mapped = InjectContext.ResolveMapped(eventDef);
+                                instr.Operand = mapped ?? eventDef;
+                            }
+                            else if (inlineType.IsPropertyDef && inlineType is PropertyDef propDef)
+                            {
+                                var mapped = InjectContext.ResolveMapped(propDef);
+                                instr.Operand = mapped ?? propDef;
+                            }
                         }
                     }
 
