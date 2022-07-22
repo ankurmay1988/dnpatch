@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -42,9 +43,9 @@ namespace dnpatch
             return from instruction in main select instruction.OpCode;
         }
 
-        public static IEnumerable<string> GetReferences(string fileName, out string targetFramework, out string runtime, out UniversalAssemblyResolver resolver)
+        public static IEnumerable<string> GetReferences(string fileName, out string targetFramework, out string runtime, out UniversalAssemblyResolver resolver, out Microsoft.CodeAnalysis.Platform platform)
         {
-            DetectFramework(fileName, out targetFramework, out runtime, out var refs);
+            DetectFramework(fileName, out targetFramework, out runtime, out var refs, out platform);
             var asmResolver = GetAssemblyResolver(fileName, targetFramework, runtime);
             resolver = asmResolver;
             return refs.Select(r =>
@@ -61,7 +62,7 @@ namespace dnpatch
 
         public static UniversalAssemblyResolver GetAssemblyResolver(string fileName)
         {
-            DetectFramework(fileName, out var targetFramework, out var runtime, out var refs);
+            DetectFramework(fileName, out var targetFramework, out var runtime, out var refs, out var platform);
             var resolver = GetAssemblyResolver(fileName, targetFramework, runtime);
             return resolver;
         }
@@ -80,17 +81,59 @@ namespace dnpatch
             return resolver;
         }
 
-        public static void DetectFramework(string fileName, out string targetFramework, out string runtime, out AssemblyReference[] references)
+        public static void DetectFramework(
+            string fileName,
+            out string targetFramework,
+            out string runtime,
+            out AssemblyReference[] references,
+            out Microsoft.CodeAnalysis.Platform platform)
         {
             using var fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            using ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
+            ICSharpCode.Decompiler.Metadata.PEFile peFile = new(
                     fileName,
                     fileStream,
                     System.Reflection.PortableExecutable.PEStreamOptions.PrefetchEntireImage,
                     System.Reflection.Metadata.MetadataReaderOptions.Default);
+
             targetFramework = peFile.DetectTargetFrameworkId();
             runtime = peFile.DetectRuntimePack();
             references = peFile.AssemblyReferences.ToArray();
+            platform = GetPlatform(peFile);
+        }
+
+        public static Microsoft.CodeAnalysis.Platform GetPlatform(PEFile module)
+        {
+            PEHeaders pEHeaders = module.Reader.PEHeaders;
+            Machine machine = pEHeaders.CoffHeader.Machine;
+            Characteristics characteristics = pEHeaders.CoffHeader.Characteristics;
+            CorFlags flags = pEHeaders.CorHeader.Flags;
+            switch (machine)
+            {
+                case Machine.I386:
+                    if ((flags & CorFlags.Prefers32Bit) != 0)
+                    {
+                        return Microsoft.CodeAnalysis.Platform.AnyCpu32BitPreferred;
+                    }
+                    if ((flags & CorFlags.Requires32Bit) != 0)
+                    {
+                        return Microsoft.CodeAnalysis.Platform.X86;
+                    }
+                    if ((flags & CorFlags.ILOnly) == 0 && (characteristics & Characteristics.Bit32Machine) != 0)
+                    {
+                        return Microsoft.CodeAnalysis.Platform.X86;
+                    }
+                    return Microsoft.CodeAnalysis.Platform.AnyCpu;
+                case Machine.Amd64:
+                    return Microsoft.CodeAnalysis.Platform.X64;
+                case Machine.IA64:
+                    return Microsoft.CodeAnalysis.Platform.Itanium;
+                case Machine.Arm:
+                    return Microsoft.CodeAnalysis.Platform.Arm;
+                case Machine.Arm64:
+                    return Microsoft.CodeAnalysis.Platform.Arm64;
+                default:
+                    return Microsoft.CodeAnalysis.Platform.AnyCpu;
+            }
         }
     }
 }

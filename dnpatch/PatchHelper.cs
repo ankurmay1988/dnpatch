@@ -1304,8 +1304,9 @@ namespace dnpatch
             var source = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(sourceCode);
 
             var references = new List<string>();
-            references.AddRange(Extensions.GetReferences(_file, out var targetFramework, out var runtime, out var resolver));
-            var emitOptions = new EmitOptions(runtimeMetadataVersion: targetFramework);
+            references.AddRange(Extensions.GetReferences(_file, out var targetFramework, out var runtime, out var resolver, out var platform));
+            var emitOptions = new EmitOptions()
+                            .WithRuntimeMetadataVersion(targetFramework);
 
             if (additionalDllReferences != null)
             {
@@ -1328,22 +1329,21 @@ namespace dnpatch
             var refs = references.Select(x => MetadataReference.CreateFromFile(x));
 
             var compileOpts = new CSharpCompilationOptions(OutputKind.NetModule)
-                                .WithPlatform(Platform.AnyCpu);
+                                .WithPlatform(platform)
+                                .WithOptimizationLevel(OptimizationLevel.Release);
             var compilation = CSharpCompilation.Create(moduleName, options: compileOpts)
-                    .AddReferences(refs)
+                    .WithReferences(refs)
                     .AddSyntaxTrees(source);
 
             using var dll = new MemoryStream();
-            using var pdb = new MemoryStream();
-            var result = compilation.Emit(dll, pdb, options: emitOptions);
+            var result = compilation.Emit(dll, null, options: emitOptions);
 
             if (!result.Success)
             {
                 throw new InvalidMethodException("Unable to compile. Errors: " + String.Join("\n", result.Diagnostics.Select(x => x.GetMessage())));
             }
-            var codeModule = ModuleDefMD.Load(dll);
-            codeModule.LoadPdb(pdb.ToArray());
 
+            var codeModule = ModuleDefMD.Load(dll);
             return codeModule;
         }
 
