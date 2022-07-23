@@ -1,21 +1,30 @@
 # dnpatch
 [WIP] .NET Patcher library using dnlib.
 
-*If you have questions feel free to ask me via Gitter! I'm glad to help you out! Taking feature requests!*
+This project is a fork of [ioncodes/dnpatch](https://github.com/ioncodes/dnpatch) repository and built up from that.
 
 [![Build status](https://ci.appveyor.com/api/projects/status/39jhu0noimfkgfw2?svg=true)](https://ci.appveyor.com/project/ioncodes/dnpatch)
-[![Github All Releases](https://img.shields.io/github/downloads/ioncodes/dnpatch/total.svg)](https://github.com/ioncodes/dnpatch/releases)
-[![Join the chat at https://gitter.im/dnpatch/Lobby](https://badges.gitter.im/dnpatch/Lobby.svg)](https://gitter.im/dnpatch/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## IMPORTANT
-The master branch provides you the current stable build of dnpatch. However, I will most likely not provide support for it anymore since version 1.0 is on it's way in the v1 branch.
+The master branch provides you the current stable build of dnpatch.
 
 ## What is dnpatch?
 dnpatch is the ultimate library for all your .NET patching needs. It offers automated assembly patching, signature scanning and last but but not least bypassing of obfuscators by its ability to find methods in renamed/obfuscated types. Since the stars on GitHub exploded in a few days, dnpatch has been extended by a couple of projects. The most important one is dnpatch.deobfuscation which integrates de4dot directly into dnpatch. Also there is dnpatch.script, which gives you the ability to write patchers with pure JSON!
-The library itself uses dnlib (see next part).
+
+The library itself uses dnlib.
+
+### New Features Since v0.7
+- Removed dnpatch.deobfuscation part of the dnpatch library, as it was not working for latest deobfuscators and to keep library's motive simple, that its just a patching library anyways. Deobfuscation relied on de4dot which as of creating this fork was not actively maintained and supereded by other specialized tools.
+- Added Ability to Inject complete types and methods from one assembly to another, much like what ILMerge/ILRepack does.
+	- See **InjectHelper** class (Thanks to ConfuserEx, code is majorly based on that)
+- Compile C# Class/Methods and Inject into target assembly: 
+	- Ability to compile C# source code using .NET Compiler Platform aka Roslyn, and output ModuleDefMD using dnlib, user can then inject types (classes, methods) in this compiled module, into another assembly. So, imagine this is helpful in creating dynamic patches, no need of writing IL by hand, everything compiles and gets injected into target assembly.
+	- See **Patcher.CompileXXX** Methods
+- Hooking Methods (**Patcher.HookMethod**)
+- More on the way ...
 
 ## Notes
-Since dnpatch uses dnlib, it is highly recommended to use dnSpy to analyze your assemblies first, to ensure that you use the correct names, offsets, etc, because it uses dnlib aswell.
+Since dnpatch uses dnlib, it is highly recommended to use ILSpy/dnSpy to analyze your assemblies first, to ensure that you use the correct names, offsets, etc. dnSpy uses dnlib aswell.
 
 ## Recommendations
 It is highly recommended that you calculate the instruction's index instead of defining it, to improve the likelihood of compatibility with future updates.
@@ -357,8 +366,88 @@ Target target = new Target()
 p.Patch(target);
 p.Save("Test1.exe");
 ```
+### Hooking Methods
+```cs
+methodName = "GetClipFileInfo";
+hookMethod = domainWpfDllPatcher
+                    .FindMethod(new Target()
+                    {
+                        Class = "Pluralsight.Domain.WPF.Persistance.DownloadFileLocator",
+                        Method = methodName
+                    });
+domainWpfDllPatcher.HookMethod(
+                        hookMethod,
+                        new Target()
+                        {
+                            Class = "PatchedMethods",
+                            Method = methodName
+                        });
+```
 
-### Injecting methods (Untested)
+### Injecting classes
+If you want to inject a class from another assembly/module either on disk or inmemory. All the Origin class dependencies and references are copied over, to ensure target assembly works. There are even **Behaviours (IInjectBehaviour)** class for manipulating the target class and method names.
+
+```cs
+Patcher domainWpfDllPatcher = new(domainWpfFile);
+
+var codeModule = domainWpfDllPatcher.CompileSourceCodeForAssembly("sample", @"
+using System;
+using System.Linq;
+using System.IO;
+using Pluralsight.Domain;
+using Pluralsight.Domain.WPF.Persistance;
+public static class PatchedMethods
+{
+    public static string Sanitize(String path)
+    {
+        var invalidChars = Path.GetInvalidPathChars().Union(Path.GetInvalidFileNameChars()).ToArray();
+        return string.Join("""", path.Split(invalidChars));
+    }
+    
+    public static FileInfo GetClipFileInfo(CourseDetail course, Module module, Clip clip)
+    {
+        var locator = new DownloadFileLocator();
+        var clipIndex = clip.Index >= 0 ? clip.Index : module.Clips.IndexOf(clip);
+        var clipName = $""{clipIndex + 1:d2} {Sanitize(clip.Title)}"";
+        var moduleIndex = course.Modules.IndexOf(module);
+        var moduleName = $""{moduleIndex + 1:d2} {Sanitize(module.Title)}"";
+        string clipDir = Path.Combine(locator.GetFolderForCourseDownloads(course), moduleName);
+        string clipPath = Path.Combine(clipDir, clipName + "".mp4"");
+        
+        return new FileInfo(clipPath);
+    }
+    
+    public static string GetModuleHash(Module module)
+    {
+        return string.Empty;
+    }
+    
+    public static string GetFolderForCourseDownloads(CourseDetail course)
+    {
+        var courseName = Sanitize(course.Title);
+        return Path.Combine(new DownloadFileLocator().GetFolderForCoursesDownloads(), courseName);
+    }
+    
+}", 
+additionalGACAssemblies: new[] { "System.Linq" });
+
+// Inject whole PatchedMethods class into target DLL.
+var patchedMethods = codeModule.GetTypes().First(x => x.FullName == "PatchedMethods");
+var injected = InjectHelper.Inject(patchedMethods, domainWpfDllPatcher.GetModule(), InjectBehaviors.RenameOnlyDuplicatesBehavior());
+
+```
+- Here **InjectBehaviors.RenameOnlyDuplicatesBehavior** inject behaviour is used to modify the names of types and methods if adding them in target assembly will create a duplicate type. Renaming will only occur if type already exists in target.
+
+#### Injecting methods
+You can also inject only a method into the target assembly, just pass a method reference to **InjectHelper.Inject** function.
+```cs
+...
+var onlyMethod = codeModule.GetTypes().First(x => x.FullName == "PatchedMethods").FindMethod("Sanitize");
+var injected = InjectHelper.Inject(onlyMethod, domainWpfDllPatcher.GetModule(), InjectBehaviors.RenameOnlyDuplicatesBehavior());
+...
+```
+
+### Injecting methods (Manually create complete method) (Untested)
 If you want to inject methods into classes, call InjectMethod. Make sure to set MethodDef and Instructions. Optionally set Locals, ParameterDefs.
 ```cs
 Target target = new Target();
@@ -384,17 +473,6 @@ patcher.Save(String); // filename here
 Or if you want to replace the original file:
 ```cs
 patcher.Save(bool); // if true it will create a backup first (filename.bak)
-```
-
-## Deobfuscation [BETA]
-Baoss, what can I do if it's heavily obfuscated?! Well, listen careful to your grandpa Joe. Use 'dnpatch.deobfuscation'! It has magic powers! Nah, Joe is just kiddin', it uses the de4dot libraries.
-Reference the library dnpatch.deobfuscation and make sure that you also copy all others from the zip!
-Then do this:
-```cs
-Deobfuscation d = new Deobfuscation(string, string);
-// string 1 -> file to deobfuscate
-// string 2 -> new filename for the deobfuscated file
-d.Deobfuscate(); // Deobfuscates the file and writes it to the disk
 ```
 
 ## Scripting
