@@ -112,7 +112,7 @@ namespace dnpatch
                 case Machine.I386:
                     if ((flags & CorFlags.Prefers32Bit) != 0)
                     {
-                        return Microsoft.CodeAnalysis.Platform.AnyCpu32BitPreferred;
+                        return Microsoft.CodeAnalysis.Platform.AnyCpu;
                     }
                     if ((flags & CorFlags.Requires32Bit) != 0)
                     {

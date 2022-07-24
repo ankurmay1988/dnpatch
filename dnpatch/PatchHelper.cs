@@ -1201,6 +1201,12 @@ namespace dnpatch
         {
             var type = FindType(target.Namespace + "." + target.Class, target.NestedClasses);
             var method = FindMethod(target);
+            ReplaceMethod(method, codeMethod);
+        }
+
+        public void ReplaceMethod(MethodDef targetMethod, MethodDef codeMethod)
+        {
+            var method = targetMethod;
             method.Body.Variables.Clear();
             method.Body.Instructions.Clear();
             method.Body.ExceptionHandlers.Clear();
@@ -1219,10 +1225,6 @@ namespace dnpatch
                 {
                     method.Body.Instructions.Insert(i, codeMethod.Body.Instructions[i]);
                 }
-            }
-            else
-            {
-                method.Body.Instructions.Insert(0, target.Instruction);
             }
 
             if (codeMethod.Body.HasExceptionHandlers)
@@ -1299,6 +1301,57 @@ namespace dnpatch
             };
         }
 
+        private SyntaxTree GetPatchAttribute()
+        {
+            var code = @"
+            using System;
+            
+            public class PatchBaseAttribute : Attribute
+            {
+                public string ReflectionName { get; private set; }
+                public PatchBaseAttribute(string ReflectionName = """")
+                {
+                    this.ReflectionName = ReflectionName;
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public class PatchAttribute : Attribute { }
+
+            [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+            public class MapClassAttribute : PatchBaseAttribute
+            {
+                public MapClassAttribute(string ReflectionName = """"): base(ReflectionName) { }
+            }
+
+            [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+            public class MapFieldAttribute : PatchBaseAttribute
+            {
+                public MapFieldAttribute(string ReflectionName = """"): base(ReflectionName) { }
+            }
+
+            [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+            public class MapPropertyAttribute : PatchBaseAttribute
+            {
+                public MapPropertyAttribute(string ReflectionName = """"): base(ReflectionName) { }
+            }
+
+            [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+            public class MapMethodAttribute : PatchBaseAttribute
+            {
+                public MapMethodAttribute(string ReflectionName = """"): base(ReflectionName) { }
+            }
+
+            [AttributeUsage(AttributeTargets.Event, Inherited = false, AllowMultiple = false)]
+            public class MapEventAttribute : PatchBaseAttribute
+            {
+                public MapEventAttribute(string ReflectionName = """"): base(ReflectionName) { }
+            }
+            ";
+
+            return Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(code);
+        }
+
         public ModuleDefMD CompileSourceCodeForAssembly(string moduleName, string sourceCode, string[] additionalDllReferences = null, string[] additionalGACAssemblies = null)
         {
             var source = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(sourceCode);
@@ -1333,7 +1386,10 @@ namespace dnpatch
                                 .WithOptimizationLevel(OptimizationLevel.Release);
             var compilation = CSharpCompilation.Create(moduleName, options: compileOpts)
                     .WithReferences(refs)
-                    .AddSyntaxTrees(source);
+                    .AddSyntaxTrees(
+                        GetPatchAttribute(),
+                        source
+                    );
 
             using var dll = new MemoryStream();
             var result = compilation.Emit(dll, null, options: emitOptions);

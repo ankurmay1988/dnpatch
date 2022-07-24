@@ -296,6 +296,21 @@ namespace dnpatch
             _patcher.HookMethod(method, methodToCall);
         }
 
+        public InjectResult<MethodDef> Inject(MethodDef method, IInjectBehavior injectBehavior)
+        {
+            return InjectHelper.Inject(method, GetModule(), injectBehavior);
+        }
+
+        public InjectResult<TypeDef> Inject(TypeDef @class, IInjectBehavior injectBehavior)
+        {
+            return InjectHelper.Inject(@class, GetModule(), injectBehavior);
+        }
+
+        public InjectResult<TypeDef> PatchInject(TypeDef @class, IInjectBehavior injectBehavior)
+        {
+            return InjectHelper.PatchInject(@class, GetModule(), injectBehavior);
+        }
+
         public void AddCustomAttribute(Target target, CustomAttribute attribute)
         {
             _patcher.AddCustomAttribute(target, attribute);
