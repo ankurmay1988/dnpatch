@@ -9,11 +9,14 @@ This project is a fork of [ioncodes/dnpatch](https://github.com/ioncodes/dnpatch
 The master branch provides you the current stable build of dnpatch.
 
 ## What is dnpatch?
-dnpatch is the ultimate library for all your .NET patching needs. It offers automated assembly patching, signature scanning and last but but not least bypassing of obfuscators by its ability to find methods in renamed/obfuscated types. Since the stars on GitHub exploded in a few days, dnpatch has been extended by a couple of projects. The most important one is dnpatch.deobfuscation which integrates de4dot directly into dnpatch. Also there is dnpatch.script, which gives you the ability to write patchers with pure JSON!
+dnpatch is the ultimate library for all your .NET patching needs. It offers automated assembly patching, signature scanning, C# external/assembly code merging and injecting methods from another assembly. Also there is dnpatch.script, which gives you the ability to write patchers with pure JSON!
 
-The library itself uses dnlib.
+The library itself uses dnlib v3.5.0
 
 ### New Features Since v0.7
+- Converted projects into new SDK style projects.
+- Moved over to **.NET Standard 2.0**
+- Updated dnlib to 3.5.0
 - Removed dnpatch.deobfuscation part of the dnpatch library, as it was not working for latest deobfuscators and to keep library's motive simple, that its just a patching library anyways. Deobfuscation relied on de4dot which as of creating this fork was not actively maintained and supereded by other specialized tools.
 - Added Ability to Inject complete types and methods from one assembly to another, much like what ILMerge/ILRepack does.
 	- See **InjectHelper** class (Thanks to ConfuserEx, code is majorly based on that)
@@ -21,6 +24,7 @@ The library itself uses dnlib.
 	- Ability to compile C# source code using .NET Compiler Platform aka Roslyn, and output ModuleDefMD using dnlib, user can then inject types (classes, methods) in this compiled module, into another assembly. So, imagine this is helpful in creating dynamic patches, no need of writing IL by hand, everything compiles and gets injected into target assembly.
 	- See **Patcher.CompileXXX** Methods
 - Hooking Methods (**Patcher.HookMethod**)
+- Patching a method in target assembly writing and using c# code instead of IL. Added **Patcher.PatchInject** function to Patch/Add code in methods, fields and properties and events. Purely using power of _Roslyn's CSharpCompilation_. 
 - More on the way ...
 
 ## Notes
