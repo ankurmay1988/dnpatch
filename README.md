@@ -451,7 +451,63 @@ var injected = InjectHelper.Inject(onlyMethod, domainWpfDllPatcher.GetModule(), 
 ...
 ```
 
-### Injecting methods (Manually create complete method) (Untested)
+### InjectPatching
+Using this patching method we can patch code private/public methods of a class, that uses other private properties/methods/events/fields inside the class scope or uses other static classes outside the class's scope. For this existing class should be decompiled in dnSpy or ILSpy, then same class should be recompiled using __Patcher.CompileSourceCodeForAssembly__. But, instead of compiling a new class/method 
+
+Example:
+
+![image](https://user-images.githubusercontent.com/25763868/181740407-1ce5d6f7-b022-4253-9d2b-97dc69e3d8e1.png)
+
+Form class is defined as:
+
+![image](https://user-images.githubusercontent.com/25763868/181745487-ccae3739-aa09-4128-991c-c13f5bc32712.png)
+
+
+Take for example to crack this you would need to patch whole method like this: 
+```cs
+private void Form1_Load(object sender, EventArgs e)
+{
+this.btnEnableMe.Enabled = true;
+this.LblStat.ForeColor = Color.Green;
+}
+```
+
+So, for this patch to compile, we would need to use private/protected/public members of the class, such as **btnEnableMe** (System.Windows.Forms.Button) and **LblStat** (System.Windows.Forms.Label). We will create a mapping for these properties. We would Map our custom defined property to the existing target property in the target DLL. So, We define these mappings using **MapClassAttribute**, **MapFieldAttribute**, **MapMethodAttribute**, **MapPropertyAttribute** and **MapEventAttribute** attributes. The method(s) that need to be patched or changed is marked with a **PatchAttribute**. So, that the IL instructions can be modified for the method. **PatchAttribute** is only valid on Method(s) for now.
+
+Patch:
+```cs
+var crackMeExe = Path.Combine(Directory.GetCurrentDirectory(), "CrackMe.exe");
+Patcher crackMeExePatcher = GetPatcher(crackMeExe);
+var crackMeExeModule = crackMeExePatcher.CompileSourceCodeForAssembly(
+    "CrackMe.exe.Patch",
+@"
+using System;
+
+[MapClass(""CrackMe2_InfoSecInstitute_dotNET_Reversing.MainForm"")]
+public class MainFormPatch
+{
+    [MapProperty(""btnEnableMe"")
+    protected System.Windows.Forms.Button btnEnableMe { get; set; }
+    
+    [MapProperty(""LblStat"")
+    protected System.Windows.Forms.Label LblStat { get; set; }
+    
+    [Patch, MapMethod(""Form1_Load"")]
+    private void Form1LoadPatched(object sender, EventArgs e)
+    {
+	this.btnEnableMe.Enabled = true;
+	this.LblStat.ForeColor = Color.Green;
+    }
+}
+", 
+additionalGACAssemblies: new[] { "System.Windows.Forms" });
+
+// Inject whole PatchedMethods class into target DLL.
+var attributePatchClass = crackMeExeModule.GetTypes().First(x => x.FullName == "MainFormPatch");
+var injected = crackMeExePatcher.PatchInject(attributePatchClass, InjectBehaviors.RenameOnlyDuplicatesBehavior());
+```
+
+### Injecting and creating methods using IL (i.e. Manually create complete method) (Untested)
 If you want to inject methods into classes, call InjectMethod. Make sure to set MethodDef and Instructions. Optionally set Locals, ParameterDefs.
 ```cs
 Target target = new Target();
